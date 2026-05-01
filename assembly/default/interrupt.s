@@ -1,0 +1,1 @@
+; The default given program doesn't handle interrupts
