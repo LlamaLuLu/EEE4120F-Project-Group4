@@ -28,7 +28,8 @@ SRC = src/Parameter.v \
       src/ALU_Control.v \
       src/ControlUnit.v \
       src/Datapath.v \
-      src/StarCore1.v
+      src/StarCore1.v \
+	  src/InterruptStateMachine.v
 
 .PHONY: all alu gpr imem dmem aluctrl ctrl integration waves clean
 
@@ -110,6 +111,16 @@ integration: build/star_sim
 
 build/star_sim: $(SRC) tb/StarCore1_tb.v | build
 	iverilog $(IVFLAGS) -o build/star_sim $(SRC) tb/StarCore1_tb.v
+
+# ---------------------------------------------------------------------------
+# Project: Interrupt State Machine
+# ---------------------------------------------------------------------------
+integration: build/ism_sim
+	@echo "--- Running InterruptStateMachine testbench ---"
+	cd test && ../build/ism_sim
+
+build/ism_sim: $(SRC) tb/InterruptStateMachine_tb.v | build
+	iverilog $(IVFLAGS) -o build/ism_sim $(SRC) tb/InterruptStateMachine_tb.v
 
 # ---------------------------------------------------------------------------
 # Open the integration waveform in GTKWave
