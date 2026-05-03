@@ -23,6 +23,7 @@ module InterruptStateMachine (
     // --- Inputs --------------------------------------------------------------
     input       interrupt_pin,          // Pin connected to external input that triggers interrupts
     input       interrupt_reset,        // Used to reset the interrupt state to, active high
+    input       interrupt_en,           // Enables the triggering of interrupts
 
     // --- Outputs -------------------------------------------------------------
     output      request_interrupt       // Disables other commands and forces a jump to 0x01
@@ -37,7 +38,7 @@ module InterruptStateMachine (
 
     // Interrupt triggering
     always @(posedge interrupt_pin) begin
-        if (!active_reg)
+        if (interrupt_en && !active_reg)
             start_reg <= 1'b1;
     end
 

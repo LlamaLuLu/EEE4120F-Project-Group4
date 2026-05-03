@@ -18,12 +18,14 @@ module InterruptStateMachine_tb;
     reg         clk;
     reg         interrupt_pin;
     reg         interrupt_reset;
+    reg         interrupt_en;
     wire        request_interrupt;
 
     InterruptStateMachine uut (
         .clk                (clk),
         .interrupt_pin      (interrupt_pin),
         .interrupt_reset    (interrupt_reset),
+        .interrupt_en       (interrupt_en),
         .request_interrupt  (request_interrupt)
     );
 
@@ -38,6 +40,7 @@ module InterruptStateMachine_tb;
         test_id         = 1;
         interrupt_pin   = 1'b0;
         interrupt_reset = 1'b0;
+        interrupt_en    = 1'b0;
 
         $display("=== InterruptStateMachine Testbench ===");
 
@@ -69,7 +72,7 @@ module InterruptStateMachine_tb;
         interrupt_reset = 1'b1;
         @(posedge clk); #1;
         if (request_interrupt !== 1'b0) begin
-            $display("FAIL [T%0d]: reset pin requests an interrupt", test_id);
+            $display("FAIL [T%0d]: reset signal requests an interrupt", test_id);
             fail_count = fail_count + 1;
         end
         else
@@ -77,13 +80,37 @@ module InterruptStateMachine_tb;
         test_id = test_id + 1;
         interrupt_reset = 1'b0;
 
+        // Test that the enabling interrupts doesn't request an interrupt
+        interrupt_en = 1'b1;
+        @(posedge clk); #1;
+        if (request_interrupt !== 1'b0) begin
+            $display("FAIL [T%0d]: enable signal requests an interrupt", test_id);
+            fail_count = fail_count + 1;
+        end
+        else
+            $display("PASS [T%0d]", test_id);
+        test_id = test_id + 1;
+        interrupt_en = 1'b0;
+
         // ------------------------------------------------------------------
         // TEST GROUP 2: The state machine jumps between states correctly
         // ------------------------------------------------------------------
         $display("--- Group 2: States jump between correctly ---");
 
+        // Test that interrupts can't be triggered while disabled
+        interrupt_pin = 1'b1; #1;
+        if (request_interrupt !== 1'b0) begin
+            $display("FAIL [T%0d]: interrupt triggered while disabled", test_id);
+            fail_count = fail_count + 1;
+        end
+        else
+            $display("PASS [T%0d]", test_id);
+        test_id = test_id + 1;
+        interrupt_pin = 1'b0;
+
         // Trigger an interrupt
-        interrupt_pin = 1; #1;
+        interrupt_en = 1'b1; #1; // Enable interrupt
+        interrupt_pin = 1'b1; #1;
         if (request_interrupt !== 1'b1) begin
             $display("FAIL [T%0d]: interrupt failed to trigger", test_id);
             fail_count = fail_count + 1;
@@ -93,7 +120,7 @@ module InterruptStateMachine_tb;
         test_id = test_id + 1;
 
         // Check that falling edge of interrupt doesn't disable the request
-        interrupt_pin = 0;
+        interrupt_pin = 1'b0;
         if (request_interrupt !== 1'b1) begin
             $display("FAIL [T%0d]: falling edge of pin disabled interrupt", test_id);
             fail_count = fail_count + 1;
