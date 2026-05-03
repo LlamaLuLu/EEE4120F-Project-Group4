@@ -6,9 +6,9 @@
 
 | Name | Student No. | Tasks |
 |---|---|---|
-| Lulama Lingela | LNGLUL002 | Gamma — PC save & integration |
-| Pontsho Mbizo | MBZPON001 | Alpha — Memory-mapped GPIO |
-| Neo Vorsatz | VRSNEO001 | Beta — Control unit & RETI |
+| Lulama Lingela | LNGLUL002 | Program Counter Logic, Datapath, integration testbench |
+| Pontsho Mbizo | MBZPON001 | Data Memory (incl. I/O), Data Memory testbench |
+| Neo Vorsatz | VRSNEO001 | Interrupt State Machine, Control Unit, ISM & CU testbenches |
 
 ## Project Overview
 
@@ -16,7 +16,7 @@ Extends the StarCore-1 (Practical 4) with:
 - Memory-mapped digital I/O (GPIO in/out)
 - Single hardware interrupt triggered by a rising edge on an external pin
 - PC save/restore via a dedicated `EPC` register
-- New `RETI` instruction (opcode *TBC (`1010`)) to return from the handler
+- New `RETI` instruction (opcode `1010`) to return from the handler
 
 ## Key Design Decisions
 
@@ -24,7 +24,7 @@ Extends the StarCore-1 (Practical 4) with:
 |---|---|
 | Handler address | Hardcoded to `0x01` |
 | RETI opcode | `1010` |
-| EPC location | Inside `ProgramCounter.v`, not in R0–R7 |
+| EPC location | Inside `ProgramCounterLogic.v`, not in R0–R7 |
 | Nested interrupts | Not supported |
 | Context save | Programmer's responsibility |
 | Instruction memory | 32 words |
@@ -59,7 +59,9 @@ EEE4120F-Project-Group4/
 ```
 
 ## Assembler
+
 The assembler takes the name of the desired program. This checks in `assembly/` for a directory with this name. The file `program.s` stores the assembly program, `interrupt.s` stores the interrupt handler, and `data_memory` stores the data that'll be loaded into the data memory.
+
 ```
 ...
 ├── assembly/
@@ -90,6 +92,6 @@ make waves
 
 | | Due | Deliverable |
 |---|---|---|
-| MS1 | 4 May | Status report |
-| MS2 | 12 May | Technical demo |
-| MS3 | ~~15~~ 20 May | Final report |
+| M1 | 4 May | Status report |
+| M2 | 12 May | Technical demo |
+| M3 | ~~15~~ 20 May | Final report |

@@ -2,11 +2,12 @@
 // Practical 4: StarCore-1 — Single-Cycle Processor in Verilog
 // =========================================================================
 //
-// GROUP NUMBER:
+// GROUP NUMBER: 4
 //
 // MEMBERS:
 //   - Lulama Lingela, LNGLUL002
 //   - Pontsho Mbizo, MBZPON001
+//   - Neo Vorsatz, VRSNEO001
 
 // File        : Datapath.v
 // Description : StarCore-1 Datapath.
@@ -53,7 +54,11 @@ module Datapath (
     input  [1:0] alu_op,        // ALU operation class for ALU_Control
 
     // --- Output to ControlUnit -----------------------------------------------
-    output [3:0] opcode         // Instruction opcode field [15:12]
+    output [3:0] opcode,        // Instruction opcode field [15:12]
+
+    // --- Interrupt signals ---------------------------------------------------
+    input        request_interrupt, // From ISM: high for one cycle when interrupt fires
+    input        interrupt_reset    // From ControlUnit: high when RETI executes
 );
 
     // =========================================================================
@@ -62,9 +67,7 @@ module Datapath (
     // =========================================================================
 
     // --- Program Counter ------------------------------------------------------
-    reg  [15:0] pc_current;             // Current PC value (register)
-    wire [15:0] pc_next;                // Next PC value (combinational)
-    wire [15:0] pc2;                    // PC + 2 (sequential next address)
+    wire [15:0] pc_current;             // Current PC — driven by ProgramCounterLogic
 
     // --- Instruction fetch ----------------------------------------------------
     wire [15:0] instr;                  // Fetched instruction word
@@ -86,13 +89,7 @@ module Datapath (
     wire [15:0] alu_result;             // ALU computed result
     wire        zero_flag;              // ALU zero output
 
-    // --- Branch / Jump PC computation ----------------------------------------
-    wire [15:0] pc_branch;              // Branch target address
-    wire        beq_taken;              // BEQ condition satisfied
-    wire        bne_taken;              // BNE condition satisfied
-    wire [15:0] pc_after_branch;        // PC selected after branch evaluation
-    wire [12:0] jump_target;            // Jump target (12 bits + appended 0)
-    wire [15:0] pc_jump;                // Full 16-bit jump target address
+    // Branch/jump address computation is handled inside ProgramCounterLogic
 
     // --- Data memory ----------------------------------------------------------
     wire [15:0] mem_read_data;          // Data read from memory
@@ -102,29 +99,18 @@ module Datapath (
     // 1. PROGRAM COUNTER
     // =========================================================================
 
-    // TODO: Initialise pc_current to 16'd0 in an initial block.
-    //
-    //       initial begin
-    //           pc_current <= 16'd0;
-    //       end
-    //
-    // TODO: Update pc_current to pc_next on every positive clock edge.
-    //
-    //       always @(posedge clk) begin
-    //           pc_current <= pc_next;
-    //       end
-    //
-    // TODO: Compute pc2 = pc_current + 16'd2 using a continuous assignment.
-
-    initial begin
-        pc_current = 16'd0;
-    end
-
-    always @(posedge clk) begin
-        pc_current <= pc_next;
-    end
-
-    assign pc2 = pc_current + 16'd2;
+    ProgramCounterLogic pcl (
+        .clk              (clk),
+        .request_interrupt(request_interrupt),
+        .interrupt_reset  (interrupt_reset),
+        .jump             (jump),
+        .beq              (beq),
+        .bne              (bne),
+        .zero_flag        (zero_flag),
+        .instr_jump_field (instr[11:0]),
+        .ext_im           (ext_im),
+        .pc_current       (pc_current)
+    );
 
 
     // =========================================================================
@@ -271,47 +257,9 @@ module Datapath (
 
 
     // =========================================================================
-    // 9. BRANCH ADDRESS COMPUTATION AND PC-NEXT MUX CHAIN
-    //
-    //  pc_branch = pc2 + (sign-extended offset << 1)
-    //            = pc2 + {ext_im[14:0], 1'b0}
-    //
-    //  beq_taken  = beq & zero_flag
-    //  bne_taken  = bne & ~zero_flag
-    //
-    //  pc_after_branch:
-    //    if (beq_taken | bne_taken) -> pc_branch
-    //    else                       -> pc2
-    //
-    //  pc_jump = { pc2[15:13], instr[11:0], 1'b0 }
-    //
-    //  pc_next:
-    //    if jump -> pc_jump
-    //    else    -> pc_after_branch
+    // 9. BRANCH / JUMP / INTERRUPT PC LOGIC
+    // All handled inside ProgramCounterLogic (instantiated in section 1).
     // =========================================================================
-
-    // TODO: Implement all of the above using continuous assignments.
-    //
-    //       assign pc_branch       = pc2 + {ext_im[14:0], 1'b0};
-    //       assign beq_taken       = beq & zero_flag;
-    //       assign bne_taken       = bne & ~zero_flag;
-    //       assign pc_after_branch = (beq_taken | bne_taken) ? pc_branch : pc2;
-    //       assign jump_target     = {instr[11:0], 1'b0};
-    //       assign pc_jump         = {pc2[15:13], jump_target};
-    //       assign pc_next         = jump ? pc_jump : pc_after_branch;
-    //
-    //       Note on jump address: {pc2[15:13], jump_target} preserves the
-    //       three most-significant bits of PC+2 and replaces bits [12:0]
-    //       with the shifted offset, limiting jumps to within the same
-    //       8 KB aligned region. This matches the StarCore ISA specification.
-
-    assign pc_branch       = pc2 + {ext_im[14:0], 1'b0};
-    assign beq_taken       = beq & zero_flag;
-    assign bne_taken       = bne & ~zero_flag;
-    assign pc_after_branch = (beq_taken | bne_taken) ? pc_branch : pc2;
-    assign jump_target     = {instr[11:0], 1'b0};
-    assign pc_jump         = {pc2[15:13], jump_target};
-    assign pc_next         = jump ? pc_jump : pc_after_branch;
 
 
     // =========================================================================

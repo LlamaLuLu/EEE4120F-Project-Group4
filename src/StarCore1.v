@@ -2,7 +2,7 @@
 // Practical 4: StarCore-1 — Single-Cycle Processor in Verilog
 // =========================================================================
 //
-// GROUP NUMBER:
+// GROUP NUMBER: 4
 //
 // MEMBERS:
 //   - Lulama Lingela, LNGLUL002

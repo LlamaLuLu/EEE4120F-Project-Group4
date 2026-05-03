@@ -2,11 +2,12 @@
 // Practical 4: StarCore-1 — Single-Cycle Processor in Verilog
 // =========================================================================
 //
-// GROUP NUMBER:
+// GROUP NUMBER: 4
 //
 // MEMBERS:
-//   - Member 1 Name, Student Number
-//   - Member 2 Name, Student Number
+//   - Lulama Lingela, LNGLUL002
+//   - Pontsho Mbizo, MBZPON001
+//   - Neo Vorsatz, VRSNEO001
 
 // File        : Parameter.v
 // Description : Shared compile-time parameters used across all modules.

@@ -2,11 +2,12 @@
 // Practical 4: StarCore-1 — Single-Cycle Processor in Verilog
 // =========================================================================
 //
-// GROUP NUMBER:
+// GROUP NUMBER: 4
 //
 // MEMBERS:
 //   - Lulama Lingela, LNGLUL002
 //   - Pontsho Mbizo, MBZPON001
+//   - Neo Vorsatz, VRSNEO001
 
 // File        : ControlUnit.v
 // Description : Main Control Unit.
@@ -40,7 +41,10 @@ module ControlUnit (
     output reg       alu_src,   // 0 = RS2 register value; 1 = sign-extended immediate
     output reg       reg_dst,   // 0 = instr[8:6] (I-type WS); 1 = instr[5:3] (R-type WS)
     output reg       mem_to_reg,// 0 = ALU result; 1 = data memory read data (for LD)
-    output reg       reg_write  // Assert to write the register file on posedge clk
+    output reg       reg_write, // Assert to write the register file on posedge clk
+
+    // Interrupt control
+    output reg       interrupt_reset // Assert when executing RETI (opcode 1010); resets ISM and restores PC
 );
 
     // -------------------------------------------------------------------------
@@ -128,16 +132,17 @@ module ControlUnit (
 
     always @(*) begin
         // Safe defaults: no writes, no branches, no jumps
-        reg_dst    = 1'b0;
-        alu_src    = 1'b0;
-        mem_to_reg = 1'b0;
-        reg_write  = 1'b0;
-        mem_read   = 1'b0;
-        mem_write  = 1'b0;
-        beq        = 1'b0;
-        bne        = 1'b0;
-        alu_op     = 2'b00;
-        jump       = 1'b0;
+        reg_dst         = 1'b0;
+        alu_src         = 1'b0;
+        mem_to_reg      = 1'b0;
+        reg_write       = 1'b0;
+        mem_read        = 1'b0;
+        mem_write       = 1'b0;
+        beq             = 1'b0;
+        bne             = 1'b0;
+        alu_op          = 2'b00;
+        jump            = 1'b0;
+        interrupt_reset = 1'b0;
 
         case (opcode)
             4'b0000: begin  // LD: WS = Mem[RS1 + offset]
@@ -162,7 +167,8 @@ module ControlUnit (
                 alu_op    = 2'b00;
             end
 
-            4'b1010: begin  // Reserved — strict no-op, all defaults hold
+            4'b1010: begin  // RETI — restore PC from epc, reset ISM
+                interrupt_reset = 1'b1;
             end
 
             4'b1011: begin  // BEQ
