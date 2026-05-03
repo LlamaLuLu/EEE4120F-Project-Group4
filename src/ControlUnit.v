@@ -24,6 +24,7 @@
 
 module ControlUnit (
     input  [3:0] opcode,        // Instruction opcode [15:12] from Datapath
+    input  request_interrupt,   // Disables all other control signals to allow for an interrupt
 
     // ALU control
     output reg [1:0] alu_op,    // Passed to ALU_Control: 10=mem, 01=branch, 00=R-type
@@ -144,50 +145,52 @@ module ControlUnit (
         jump            = 1'b0;
         interrupt_reset = 1'b0;
 
-        case (opcode)
-            4'b0000: begin  // LD: WS = Mem[RS1 + offset]
-                alu_src    = 1'b1;
-                mem_to_reg = 1'b1;
-                reg_write  = 1'b1;
-                mem_read   = 1'b1;
-                alu_op     = 2'b10;
-            end
+        if (!request_interrupt) begin
+            case (opcode)
+                4'b0000: begin  // LD: WS = Mem[RS1 + offset]
+                    alu_src    = 1'b1;
+                    mem_to_reg = 1'b1;
+                    reg_write  = 1'b1;
+                    mem_read   = 1'b1;
+                    alu_op     = 2'b10;
+                end
 
-            4'b0001: begin  // ST: Mem[RS1 + offset] = RS2
-                alu_src   = 1'b1;
-                mem_write = 1'b1;
-                alu_op    = 2'b10;
-            end
+                4'b0001: begin  // ST: Mem[RS1 + offset] = RS2
+                    alu_src   = 1'b1;
+                    mem_write = 1'b1;
+                    alu_op    = 2'b10;
+                end
 
-            // R-type: ADD, SUB, INV, SHL, SHR, AND, OR, SLT
-            4'b0010, 4'b0011, 4'b0100, 4'b0101,
-            4'b0110, 4'b0111, 4'b1000, 4'b1001: begin
-                reg_dst   = 1'b1;
-                reg_write = 1'b1;
-                alu_op    = 2'b00;
-            end
+                // R-type: ADD, SUB, INV, SHL, SHR, AND, OR, SLT
+                4'b0010, 4'b0011, 4'b0100, 4'b0101,
+                4'b0110, 4'b0111, 4'b1000, 4'b1001: begin
+                    reg_dst   = 1'b1;
+                    reg_write = 1'b1;
+                    alu_op    = 2'b00;
+                end
 
-            4'b1010: begin  // RETI — restore PC from epc, reset ISM
-                interrupt_reset = 1'b1;
-            end
+                4'b1010: begin  // RETI — restore PC from epc, reset ISM
+                    interrupt_reset = 1'b1;
+                end
 
-            4'b1011: begin  // BEQ
-                beq    = 1'b1;
-                alu_op = 2'b01;
-            end
+                4'b1011: begin  // BEQ
+                    beq    = 1'b1;
+                    alu_op = 2'b01;
+                end
 
-            4'b1100: begin  // BNE
-                bne    = 1'b1;
-                alu_op = 2'b01;
-            end
+                4'b1100: begin  // BNE
+                    bne    = 1'b1;
+                    alu_op = 2'b01;
+                end
 
-            4'b1101: begin  // JMP
-                jump = 1'b1;
-            end
+                4'b1101: begin  // JMP
+                    jump = 1'b1;
+                end
 
-            default: begin  // Undefined opcodes — safe no-op
-            end
-        endcase
+                default: begin  // Undefined opcodes — safe no-op
+                end
+            endcase
+        end
     end
 
 endmodule

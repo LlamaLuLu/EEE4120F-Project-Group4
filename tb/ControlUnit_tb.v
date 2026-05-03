@@ -52,6 +52,7 @@
 module ControlUnit_tb;
 
     reg  [3:0] opcode;
+    reg        request_interrupt;
 
     wire [1:0] alu_op;
     wire       jump;
@@ -66,18 +67,19 @@ module ControlUnit_tb;
     wire       interrupt_reset;
 
     ControlUnit uut (
-        .opcode          (opcode),
-        .alu_op          (alu_op),
-        .jump            (jump),
-        .beq             (beq),
-        .bne             (bne),
-        .mem_read        (mem_read),
-        .mem_write       (mem_write),
-        .alu_src         (alu_src),
-        .reg_dst         (reg_dst),
-        .mem_to_reg      (mem_to_reg),
-        .reg_write       (reg_write),
-        .interrupt_reset (interrupt_reset)
+        .opcode             (opcode),
+        .request_interrupt  (request_interrupt),
+        .alu_op             (alu_op),
+        .jump               (jump),
+        .beq                (beq),
+        .bne                (bne),
+        .mem_read           (mem_read),
+        .mem_write          (mem_write),
+        .alu_src            (alu_src),
+        .reg_dst            (reg_dst),
+        .mem_to_reg         (mem_to_reg),
+        .reg_write          (reg_write),
+        .interrupt_reset    (interrupt_reset)
     );
 
     initial begin
@@ -162,6 +164,7 @@ module ControlUnit_tb;
     initial begin
         fail_count = 0;
         test_id    = 1;
+        request_interrupt = 1'b0;
         $display("=== ControlUnit Testbench ===");
         $display("    columns: alu_op jump beq bne mem_read mem_write alu_src reg_dst mem_to_reg reg_write");
 
@@ -295,6 +298,13 @@ module ControlUnit_tb;
         opcode = 4'b1111; #10;
         check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
         test_id = test_id + 1;
+
+        $display("--- Interrupt Requesting ---");
+        request_interrupt = 1'b1; // Request an interrupt
+        for (opcode=4'b0000; opcode<4'b1110; opcode=opcode+4'b0001) begin // For each implemented opcode
+            check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
+            test_id = test_id + 1;
+        end
 
         $display("");
         if (fail_count == 0)
