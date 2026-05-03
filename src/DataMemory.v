@@ -1,117 +1,108 @@
 // =========================================================================
-// Practical 4: StarCore-1 — Single-Cycle Processor in Verilog
+// StarCore-1+ — Data Memory with Memory-Mapped I/O
 // =========================================================================
 //
-// GROUP NUMBER: 4
-//
-// MEMBERS:
-//   - Lulama Lingela, LNGLUL002
-//   - Pontsho Mbizo, MBZPON001
-
 // File        : DataMemory.v
-// Description : Data Memory (RAM).
-//               8 words × 16 bits. Contents loaded at simulation start from
-//               the binary file ./test/test.data using $readmemb.
-//               Writes are synchronous (positive-edge clocked).
-//               Reads are combinational and gated by the mem_read enable.
+// Owner       : Pontsho Mbizo, MBZPON001
+// Description : 32-word × 16-bit data RAM with address-decoded memory-mapped
+//               I/O.  Word addresses 4–7 are shadowed by I/O registers; the
+//               RAM array entries at those indices are physically unused.
 //
-// Task 4 — Student Implementation Required
+// Bus interface
+// -------------
+//   addr[4:0] selects one of 32 word slots.  All accesses are 16-bit aligned
+//   (word addressing).  The upper address bits are ignored.
+//
+// I/O address map  (word address)
+// --------------------------------
+//   4  INT_FLAG  R, write-1-to-clear  (storage in Beta's ISM)
+//   5  INT_EN    R/W                  (storage in Beta's ISM)
+//   6  GPIO_IN   R only; writes silently dropped
+//   7  GPIO_OUT  R/W                  (storage in Alpha's GPIO.v)
+//   All other addresses → RAM
+//
+// Write-enable outputs are *combinational* (asserted while mem_wr is high).
+// The RAM write is synchronous (registered on posedge clk).
+// Read output is combinational and gated by mem_rd.
 // =============================================================================
 
 `timescale 1ns / 1ps
 `include "../src/Parameter.v"
 
 module DataMemory (
-    input        clk,
+    input  wire        clk,
+    input  wire        rst,             // unused in RAM logic; included for bus compat
 
-    // Shared address bus (used for both reads and writes)
-    input  [15:0] mem_access_addr,  // Byte address; only lower bits used for indexing
+    // ----- Bus from Datapath -----
+    input  wire [`WORD_WIDTH-1:0] addr,
+    input  wire [`WORD_WIDTH-1:0] write_data,
+    input  wire        mem_rd,
+    input  wire        mem_wr,
+    output wire [`WORD_WIDTH-1:0] read_data,
 
-    // Write port
-    input  [15:0] mem_write_data,   // Data to store
-    input        mem_write_en,      // Assert to write on the next posedge clk
+    // ----- GPIO bus (to/from GPIO.v) -----
+    output wire        gpio_out_we,                 // pulse: latch write_data into GPIO_OUT
+    output wire [`WORD_WIDTH-1:0] gpio_out_din,     // = write_data (GPIO gates on gpio_out_we)
+    input  wire [`WORD_WIDTH-1:0] gpio_in_data,     // combinational mirror of io_in_pins
+    input  wire [`WORD_WIDTH-1:0] gpio_out_data,    // read-back of GPIO_OUT register
 
-    // Read port
-    input        mem_read,          // Assert to enable the read output
-    output [15:0] mem_read_data     // Read result; 16'd0 when mem_read is de-asserted
+    // ----- Interrupt bus (to/from Beta's InterruptStateMachine) -----
+    output wire        int_en_we,                   // pulse: Beta latches write_data → INT_EN
+    output wire        int_flag_clr,                // pulse: Beta applies write-1-to-clear
+    output wire [`WORD_WIDTH-1:0] int_bus_din,      // = write_data (Beta gates on *_we / *_clr)
+    input  wire [`WORD_WIDTH-1:0] int_en_data,      // current INT_EN value from Beta
+    input  wire [`WORD_WIDTH-1:0] int_flag_data     // current INT_FLAG value from Beta
 );
 
     // -------------------------------------------------------------------------
-    // TODO: Declare the data memory array.
-    //       It should hold `ROW_D entries, each `COL bits wide.
-    //
-    //       reg [`COL-1:0] memory [`ROW_D-1:0];
+    // RAM array — 32 words; words 4–7 are shadowed by I/O and never written.
     // -------------------------------------------------------------------------
-
-    reg [`COL-1:0] memory [`ROW_D-1:0];
-
-    // -------------------------------------------------------------------------
-    // TODO: Derive the word address from mem_access_addr.
-    //       The data memory is 8 words deep so only 3 address bits are needed.
-    //       The ALU computes a byte address; use the lower 3 bits as the index:
-    //
-    //           wire [2:0] ram_addr = mem_access_addr[2:0];
-    //
-    //       This maps byte addresses 0,1,2,3,4,5,6,7 to words 0–7.
-    //       (In a full system the byte offset within a word would also be
-    //       handled, but StarCore-1 only supports 16-bit aligned accesses.)
-    // -------------------------------------------------------------------------
-
-    wire [2:0] ram_addr = mem_access_addr[2:0];
-
-    // -------------------------------------------------------------------------
-    // TODO: Load the data memory from file at simulation start.
-    //       The file ./test/test.data must contain one 16-bit binary value
-    //       per line (8 lines total, one per word).
-    //
-    //       integer log_fd;
-    //       initial begin
-    //           $readmemb("./test/test.data", memory);
-    //       end
-    //
-    //       Optional — add a $fmonitor to log memory contents to a file.
-    //       This is useful for verifying ST instructions during simulation:
-    //
-    //       initial begin
-    //           log_fd = $fopen(`DMEM_LOG);
-    //           $fmonitor(log_fd, "t=%0t  [0]=%h [1]=%h [2]=%h [3]=%h",
-    //                     $time, memory[0], memory[1], memory[2], memory[3]);
-    //           `SIM_TIME;
-    //           $fclose(log_fd);
-    //       end
-    // -------------------------------------------------------------------------
+    reg [`WORD_WIDTH-1:0] ram [`DMEM_DEPTH-1:0];
 
     initial begin
-        $readmemb("../test/test.data", memory, 0, 7);
+        $readmemb("../test/test.data", ram, 0, `DMEM_DEPTH-1);
     end
 
     // -------------------------------------------------------------------------
-    // TODO: Implement the synchronous write port.
-    //       Write mem_write_data to memory[ram_addr] on the rising clock edge
-    //       when mem_write_en is asserted.
-    //
-    //       always @(posedge clk) begin
-    //           if (mem_write_en)
-    //               memory[ram_addr] <= mem_write_data;
-    //       end
-    //
-    //       IMPORTANT: Use non-blocking assignment (<=).
+    // Address decode — use lower DMEM_ADDR_BITS of the 16-bit bus address.
     // -------------------------------------------------------------------------
+    wire [`DMEM_ADDR_BITS-1:0] word_addr = addr[`DMEM_ADDR_BITS-1:0];
 
+    wire is_int_flag = (word_addr == `INT_FLAG_ADDR);
+    wire is_int_en   = (word_addr == `INT_EN_ADDR);
+    wire is_gpio_in  = (word_addr == `GPIO_IN_ADDR);
+    wire is_gpio_out = (word_addr == `GPIO_OUT_ADDR);
+    wire is_io       = is_int_flag | is_int_en | is_gpio_in | is_gpio_out;
+    wire is_ram      = ~is_io;
+
+    // -------------------------------------------------------------------------
+    // Write path
+    //   RAM write: synchronous, skips I/O shadow addresses.
+    //   I/O write-enables: combinational, asserted while mem_wr is high.
+    //   gpio_out_din / int_bus_din are just write_data — downstream modules
+    //   gate on their own write-enable.
+    // -------------------------------------------------------------------------
     always @(posedge clk) begin
-        if (mem_write_en)
-            memory[ram_addr] <= mem_write_data;
+        if (mem_wr & is_ram)
+            ram[word_addr] <= write_data;
     end
 
-    // -------------------------------------------------------------------------
-    // TODO: Implement the combinational (gated) read port.
-    //       When mem_read is 1, output memory[ram_addr].
-    //       When mem_read is 0, output 16'd0 (prevents spurious register writes
-    //       during non-LD instructions).
-    //
-    //       assign mem_read_data = mem_read ? memory[ram_addr] : 16'd0;
-    // -------------------------------------------------------------------------
+    assign gpio_out_we  = mem_wr & is_gpio_out;
+    assign int_en_we    = mem_wr & is_int_en;
+    assign int_flag_clr = mem_wr & is_int_flag;
+    assign gpio_out_din = write_data;
+    assign int_bus_din  = write_data;
 
-    assign mem_read_data = mem_read ? memory[ram_addr] : 16'd0;
+    // -------------------------------------------------------------------------
+    // Read path — combinational mux, gated by mem_rd.
+    // -------------------------------------------------------------------------
+    wire [`WORD_WIDTH-1:0] read_mux =
+        is_int_flag ? int_flag_data  :
+        is_int_en   ? int_en_data    :
+        is_gpio_in  ? gpio_in_data   :
+        is_gpio_out ? gpio_out_data  :
+                      ram[word_addr];
+
+    assign read_data = mem_rd ? read_mux : {`WORD_WIDTH{1'b0}};
 
 endmodule

@@ -1,6 +1,8 @@
 ; This is the program given by the EEE4120F team, as the default test-program
 ; Converting this from binary to assembly was pain. Please buy me a coffee :'(
 
+; This is so cool, just tell me when you free for that coffee date - Pontsho
+
 ; 0000 010 000 000000
 ; R0 <- 1, which shouldn't work 'cause R0 is always 0
 LD R0, 0(R2)

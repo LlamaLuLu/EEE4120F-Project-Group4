@@ -27,6 +27,7 @@ SRC = src/Parameter.v \
       src/GPR.v \
       src/InstructionMemory.v \
       src/DataMemory.v \
+      src/GPIO.v \
       src/ALU_Control.v \
       src/ControlUnit.v \
       src/ProgramCounterLogic.v \
@@ -34,12 +35,14 @@ SRC = src/Parameter.v \
       src/StarCore1.v \
       src/InterruptStateMachine.v
 
-.PHONY: all alu gpr imem dmem aluctrl ctrl pcl ism integration waves clean
+.PHONY: all alu gpr imem dmem gpio aluctrl ctrl pcl ism integration waves clean
 
 # ---------------------------------------------------------------------------
 # all — run every testbench
+# NOTE: integration target will fail until Gamma updates Datapath/StarCore1
+#       to wire the new DataMemory ports and instantiate GPIO.
 # ---------------------------------------------------------------------------
-all: alu gpr imem dmem aluctrl ctrl pcl ism integration
+all: alu gpr imem dmem gpio aluctrl ctrl pcl ism integration
 
 # ---------------------------------------------------------------------------
 # Task 1: ALU
@@ -82,6 +85,17 @@ dmem: build/dm_sim
 build/dm_sim: src/DataMemory.v tb/DataMemory_tb.v | build
 	iverilog $(IVFLAGS) -o build/dm_sim \
 		src/Parameter.v src/DataMemory.v tb/DataMemory_tb.v
+
+# ---------------------------------------------------------------------------
+# Alpha: GPIO
+# ---------------------------------------------------------------------------
+gpio: build/gpio_sim
+	@echo "--- Running GPIO testbench ---"
+	cd test && ../build/gpio_sim
+
+build/gpio_sim: src/GPIO.v tb/GPIO_tb.v | build
+	iverilog $(IVFLAGS) -o build/gpio_sim \
+		src/Parameter.v src/GPIO.v tb/GPIO_tb.v
 
 # ---------------------------------------------------------------------------
 # Task 5: ALU Control Unit
