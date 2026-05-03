@@ -7,6 +7,7 @@
 // MEMBERS:
 //   - Lulama Lingela, LNGLUL002
 //   - Pontsho Mbizo, MBZPON001
+//   - Neo Vorsatz, VRSNEO001
 
 // File        : StarCore1.v
 // Description : Top-level StarCore-1 processor module.
@@ -21,7 +22,8 @@
 `include "../src/Parameter.v"
 
 module StarCore1 (
-    input clk       // System clock — drives both the Datapath and GPR/DataMemory
+    input clk,          // System clock — drives both the Datapath and GPR/DataMemory
+    input interrupt_pin // External interrupt request line (rising-edge triggered)
 );
 
     // =========================================================================
@@ -56,6 +58,10 @@ module StarCore1 (
     wire [1:0]  alu_op;
     wire [3:0]  opcode;
 
+    // Interrupt wires
+    wire        request_interrupt; // ISM → Datapath/PCL: interrupt pending for one cycle
+    wire        interrupt_reset;   // ControlUnit → ISM + PCL: RETI is executing
+
 
     // =========================================================================
     // DATAPATH INSTANTIATION
@@ -81,18 +87,20 @@ module StarCore1 (
     //       );
 
     Datapath DU (
-        .clk        (clk),
-        .jump       (jump),
-        .beq        (beq),
-        .bne        (bne),
-        .mem_read   (mem_read),
-        .mem_write  (mem_write),
-        .alu_src    (alu_src),
-        .reg_dst    (reg_dst),
-        .mem_to_reg (mem_to_reg),
-        .reg_write  (reg_write),
-        .alu_op     (alu_op),
-        .opcode     (opcode)
+        .clk               (clk),
+        .jump              (jump),
+        .beq               (beq),
+        .bne               (bne),
+        .mem_read          (mem_read),
+        .mem_write         (mem_write),
+        .alu_src           (alu_src),
+        .reg_dst           (reg_dst),
+        .mem_to_reg        (mem_to_reg),
+        .reg_write         (reg_write),
+        .alu_op            (alu_op),
+        .opcode            (opcode),
+        .request_interrupt (request_interrupt),
+        .interrupt_reset   (interrupt_reset)
     );
 
 
@@ -119,17 +127,30 @@ module StarCore1 (
     //       );
 
     ControlUnit CU (
-        .opcode     (opcode),
-        .alu_op     (alu_op),
-        .jump       (jump),
-        .beq        (beq),
-        .bne        (bne),
-        .mem_read   (mem_read),
-        .mem_write  (mem_write),
-        .alu_src    (alu_src),
-        .reg_dst    (reg_dst),
-        .mem_to_reg (mem_to_reg),
-        .reg_write  (reg_write)
+        .opcode          (opcode),
+        .alu_op          (alu_op),
+        .jump            (jump),
+        .beq             (beq),
+        .bne             (bne),
+        .mem_read        (mem_read),
+        .mem_write       (mem_write),
+        .alu_src         (alu_src),
+        .reg_dst         (reg_dst),
+        .mem_to_reg      (mem_to_reg),
+        .reg_write       (reg_write),
+        .interrupt_reset (interrupt_reset)
+    );
+
+
+    // =========================================================================
+    // INTERRUPT STATE MACHINE INSTANTIATION
+    // =========================================================================
+
+    InterruptStateMachine ISM (
+        .clk               (clk),
+        .interrupt_pin     (interrupt_pin),
+        .interrupt_reset   (interrupt_reset),
+        .request_interrupt (request_interrupt)
     );
 
 endmodule

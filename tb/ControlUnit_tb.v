@@ -63,19 +63,21 @@ module ControlUnit_tb;
     wire       reg_dst;
     wire       mem_to_reg;
     wire       reg_write;
+    wire       interrupt_reset;
 
     ControlUnit uut (
-        .opcode     (opcode),
-        .alu_op     (alu_op),
-        .jump       (jump),
-        .beq        (beq),
-        .bne        (bne),
-        .mem_read   (mem_read),
-        .mem_write  (mem_write),
-        .alu_src    (alu_src),
-        .reg_dst    (reg_dst),
-        .mem_to_reg (mem_to_reg),
-        .reg_write  (reg_write)
+        .opcode          (opcode),
+        .alu_op          (alu_op),
+        .jump            (jump),
+        .beq             (beq),
+        .bne             (bne),
+        .mem_read        (mem_read),
+        .mem_write       (mem_write),
+        .alu_src         (alu_src),
+        .reg_dst         (reg_dst),
+        .mem_to_reg      (mem_to_reg),
+        .reg_write       (reg_write),
+        .interrupt_reset (interrupt_reset)
     );
 
     initial begin
@@ -97,21 +99,57 @@ module ControlUnit_tb;
         input       e_mem_read, e_mem_write;
         input       e_alu_src, e_reg_dst;
         input       e_mem_to_reg, e_reg_write;
+        input       e_interrupt_reset;
         input [63:0] id;
 
         reg failed;
         begin
             failed = 1'b0;
-            if (alu_op    !== e_alu_op)    begin $display("  MISMATCH alu_op:    got %b exp %b", alu_op,    e_alu_op);    failed=1; end
-            if (jump      !== e_jump)      begin $display("  MISMATCH jump:      got %b exp %b", jump,      e_jump);      failed=1; end
-            if (beq       !== e_beq)       begin $display("  MISMATCH beq:       got %b exp %b", beq,       e_beq);       failed=1; end
-            if (bne       !== e_bne)       begin $display("  MISMATCH bne:       got %b exp %b", bne,       e_bne);       failed=1; end
-            if (mem_read  !== e_mem_read)  begin $display("  MISMATCH mem_read:  got %b exp %b", mem_read,  e_mem_read);  failed=1; end
-            if (mem_write !== e_mem_write) begin $display("  MISMATCH mem_write: got %b exp %b", mem_write, e_mem_write); failed=1; end
-            if (alu_src   !== e_alu_src)   begin $display("  MISMATCH alu_src:   got %b exp %b", alu_src,   e_alu_src);   failed=1; end
-            if (reg_dst   !== e_reg_dst)   begin $display("  MISMATCH reg_dst:   got %b exp %b", reg_dst,   e_reg_dst);   failed=1; end
-            if (mem_to_reg!== e_mem_to_reg)begin $display("  MISMATCH mem_to_reg:got %b exp %b", mem_to_reg,e_mem_to_reg);failed=1; end
-            if (reg_write !== e_reg_write) begin $display("  MISMATCH reg_write: got %b exp %b", reg_write, e_reg_write); failed=1; end
+
+            if (alu_op !== e_alu_op) begin
+                $display("  MISMATCH alu_op:          got %b exp %b", alu_op, e_alu_op);
+                failed = 1;
+            end
+            if (jump !== e_jump) begin
+                $display("  MISMATCH jump:            got %b exp %b", jump, e_jump);
+                failed = 1;
+            end
+            if (beq !== e_beq) begin
+                $display("  MISMATCH beq:             got %b exp %b", beq, e_beq);
+                failed = 1;
+            end
+            if (bne !== e_bne) begin
+                $display("  MISMATCH bne:             got %b exp %b", bne, e_bne);
+                failed = 1;
+            end
+            if (mem_read !== e_mem_read) begin
+                $display("  MISMATCH mem_read:        got %b exp %b", mem_read, e_mem_read);
+                failed = 1;
+            end
+            if (mem_write !== e_mem_write) begin
+                $display("  MISMATCH mem_write:       got %b exp %b", mem_write, e_mem_write);
+                failed = 1;
+            end
+            if (alu_src !== e_alu_src) begin
+                $display("  MISMATCH alu_src:         got %b exp %b", alu_src, e_alu_src);
+                failed = 1;
+            end
+            if (reg_dst !== e_reg_dst) begin
+                $display("  MISMATCH reg_dst:         got %b exp %b", reg_dst, e_reg_dst);
+                failed = 1;
+            end
+            if (mem_to_reg !== e_mem_to_reg) begin
+                $display("  MISMATCH mem_to_reg:      got %b exp %b", mem_to_reg, e_mem_to_reg);
+                failed = 1;
+            end
+            if (reg_write !== e_reg_write) begin
+                $display("  MISMATCH reg_write:       got %b exp %b", reg_write, e_reg_write);
+                failed = 1;
+            end
+            if (interrupt_reset !== e_interrupt_reset) begin
+                $display("  MISMATCH interrupt_reset: got %b exp %b", interrupt_reset, e_interrupt_reset);
+                failed = 1;
+            end
 
             if (failed) begin
                 $display("FAIL [T%0d]: opcode=%b", id, opcode);
@@ -138,8 +176,8 @@ module ControlUnit_tb;
         // -----------------------------------------------------------------
         $display("--- LD (0000) ---");
         opcode = 4'b0000; #10;
-        //        alu_op  jump  beq   bne   mr    mw    as    rd    mtr   rw
-        check_ctrl(2'b10, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, test_id);
+        //        alu_op  jump  beq   bne   mr    mw    as    rd    mtr   rw    ireset
+        check_ctrl(2'b10, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         // -----------------------------------------------------------------
@@ -152,7 +190,7 @@ module ControlUnit_tb;
         // -----------------------------------------------------------------
         $display("--- ST (0001) ---");
         opcode = 4'b0001; #10;
-        check_ctrl(2'b10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, test_id);
+        check_ctrl(2'b10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
         test_id = test_id + 1;
 
         // -----------------------------------------------------------------
@@ -165,54 +203,52 @@ module ControlUnit_tb;
         // -----------------------------------------------------------------
         $display("--- R-type: ADD (0010) ---");
         opcode = 4'b0010; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- R-type: SUB (0011) ---");
         opcode = 4'b0011; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- R-type: INV (0100) ---");
         opcode = 4'b0100; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- R-type: SHL (0101) ---");
         opcode = 4'b0101; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- R-type: SHR (0110) ---");
         opcode = 4'b0110; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- R-type: AND (0111) ---");
         opcode = 4'b0111; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- R-type: OR (1000) ---");
         opcode = 4'b1000; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- R-type: SLT (1001) ---");
         opcode = 4'b1001; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b0, test_id);
         test_id = test_id + 1;
 
         // -----------------------------------------------------------------
-        // Reserved co-processor opcode (1010): strict no-op
-        //   ALL signals must be 0.
-        //   The PC still advances by 2 (that happens unconditionally in
-        //   the datapath, not via a control signal).
-        //   No registers written, no memory touched, no branch/jump.
+        // RETI (1010): return from interrupt
+        //   interrupt_reset=1 -> PCL restores epc; ISM clears active state
+        //   All other signals 0: no register write, no memory, no branch/jump.
         // -----------------------------------------------------------------
-        $display("--- Reserved/RSVD (1010) — all zeros ---");
+        $display("--- RETI (1010) ---");
         opcode = 4'b1010; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, test_id);
         test_id = test_id + 1;
 
         // -----------------------------------------------------------------
@@ -223,7 +259,7 @@ module ControlUnit_tb;
         // -----------------------------------------------------------------
         $display("--- BEQ (1011) ---");
         opcode = 4'b1011; #10;
-        check_ctrl(2'b01, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
+        check_ctrl(2'b01, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
         test_id = test_id + 1;
 
         // -----------------------------------------------------------------
@@ -233,7 +269,7 @@ module ControlUnit_tb;
         // -----------------------------------------------------------------
         $display("--- BNE (1100) ---");
         opcode = 4'b1100; #10;
-        check_ctrl(2'b01, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
+        check_ctrl(2'b01, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
         test_id = test_id + 1;
 
         // -----------------------------------------------------------------
@@ -243,23 +279,21 @@ module ControlUnit_tb;
         // -----------------------------------------------------------------
         $display("--- JMP (1101) ---");
         opcode = 4'b1101; #10;
-        check_ctrl(2'b00, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
+        check_ctrl(2'b00, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
         test_id = test_id + 1;
 
         // -----------------------------------------------------------------
         // Undefined opcodes (1110, 1111): default case in the case statement
         //   All outputs stay at their safe defaults (all 0).
-        //   This is why setting defaults at the top of always @(*) matters —
-        //   any opcode not explicitly handled is automatically safe.
         // -----------------------------------------------------------------
         $display("--- Undefined (1110) ---");
         opcode = 4'b1110; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("--- Undefined (1111) ---");
         opcode = 4'b1111; #10;
-        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
+        check_ctrl(2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, test_id);
         test_id = test_id + 1;
 
         $display("");
