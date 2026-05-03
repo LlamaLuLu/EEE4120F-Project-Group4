@@ -1,5 +1,5 @@
 # =============================================================================
-# EEE4120F Practical 4 — StarCore-1 Processor
+# EEE4120F Project — StarCore-1 Processor with Interrupt Support
 # Makefile — automates compilation and simulation of all modules
 #
 # Usage:
@@ -9,6 +9,8 @@
 #   make dmem         — compile and simulate DataMemory testbench
 #   make aluctrl      — compile and simulate ALU_Control testbench
 #   make ctrl         — compile and simulate ControlUnit testbench
+#   make pcl          — compile and simulate ProgramCounterLogic testbench
+#   make ism          — compile and simulate InterruptStateMachine testbench
 #   make integration  — compile and simulate the full processor
 #   make all          — run all testbenches in order
 #   make waves        — open the last integration waveform in GTKWave
@@ -19,7 +21,7 @@
 
 IVFLAGS = -Wall -I src/
 
-# All design source files (included in every compilation)
+# All design source files (included in every compilation that needs the full design)
 SRC = src/Parameter.v \
       src/ALU.v \
       src/GPR.v \
@@ -27,16 +29,17 @@ SRC = src/Parameter.v \
       src/DataMemory.v \
       src/ALU_Control.v \
       src/ControlUnit.v \
+      src/ProgramCounterLogic.v \
       src/Datapath.v \
       src/StarCore1.v \
-	  src/InterruptStateMachine.v
+      src/InterruptStateMachine.v
 
-.PHONY: all alu gpr imem dmem aluctrl ctrl integration waves clean
+.PHONY: all alu gpr imem dmem aluctrl ctrl pcl ism integration waves clean
 
 # ---------------------------------------------------------------------------
 # all — run every testbench
 # ---------------------------------------------------------------------------
-all: alu gpr imem dmem aluctrl ctrl integration
+all: alu gpr imem dmem aluctrl ctrl pcl ism integration
 
 # ---------------------------------------------------------------------------
 # Task 1: ALU
@@ -103,7 +106,29 @@ build/cu_sim: src/ControlUnit.v tb/ControlUnit_tb.v | build
 		src/Parameter.v src/ControlUnit.v tb/ControlUnit_tb.v
 
 # ---------------------------------------------------------------------------
-# Tasks 7 & 8: Full Processor Integration
+# Project: Program Counter Logic
+# ---------------------------------------------------------------------------
+pcl: build/pcl_sim
+	@echo "--- Running ProgramCounterLogic testbench ---"
+	cd test && ../build/pcl_sim
+
+build/pcl_sim: src/ProgramCounterLogic.v tb/ProgramCounterLogic_tb.v | build
+	iverilog $(IVFLAGS) -o build/pcl_sim \
+		src/Parameter.v src/ProgramCounterLogic.v tb/ProgramCounterLogic_tb.v
+
+# ---------------------------------------------------------------------------
+# Project: Interrupt State Machine
+# ---------------------------------------------------------------------------
+ism: build/ism_sim
+	@echo "--- Running InterruptStateMachine testbench ---"
+	cd test && ../build/ism_sim
+
+build/ism_sim: src/InterruptStateMachine.v tb/InterruptStateMachine_tb.v | build
+	iverilog $(IVFLAGS) -o build/ism_sim \
+		src/Parameter.v src/InterruptStateMachine.v tb/InterruptStateMachine_tb.v
+
+# ---------------------------------------------------------------------------
+# Full Processor Integration
 # ---------------------------------------------------------------------------
 integration: build/star_sim
 	@echo "--- Running StarCore-1 integration testbench ---"
@@ -111,16 +136,6 @@ integration: build/star_sim
 
 build/star_sim: $(SRC) tb/StarCore1_tb.v | build
 	iverilog $(IVFLAGS) -o build/star_sim $(SRC) tb/StarCore1_tb.v
-
-# ---------------------------------------------------------------------------
-# Project: Interrupt State Machine
-# ---------------------------------------------------------------------------
-integration: build/ism_sim
-	@echo "--- Running InterruptStateMachine testbench ---"
-	cd test && ../build/ism_sim
-
-build/ism_sim: $(SRC) tb/InterruptStateMachine_tb.v | build
-	iverilog $(IVFLAGS) -o build/ism_sim $(SRC) tb/InterruptStateMachine_tb.v
 
 # ---------------------------------------------------------------------------
 # Open the integration waveform in GTKWave
