@@ -17,7 +17,7 @@
 //
 //               Priority (highest first):
 //                 1. RETI (interrupt_reset) — restore PC from epc
-//                 2. Interrupt (request_interrupt) — save pc+2 to epc, jump to handler
+//                 2. Interrupt (request_interrupt) — save pc to epc, jump to handler
 //                 3. Jump (jump)
 //                 4. Branch (beq_taken | bne_taken)
 //                 5. Sequential (pc + 2)
@@ -107,10 +107,10 @@ module ProgramCounterLogic (
             pc_current <= epc;
 
         else if (request_interrupt) begin
-            // Interrupt accepted: snapshot the return address then vector to handler.
-            // epc = pc+2 so that RETI resumes at the instruction that was displaced,
-            // not the one that was executing when the interrupt fired.
-            epc        <= pc2;
+            // Interrupt accepted: snapshot the current PC then vector to handler.
+            // epc = pc_current so that RETI re-executes the instruction that was
+            // interrupted, rather than skipping it.
+            epc        <= pc_current;
             pc_current <= 16'h0002;   // handler at byte address 2 (word index 1 in InstructionMemory)
         end
 

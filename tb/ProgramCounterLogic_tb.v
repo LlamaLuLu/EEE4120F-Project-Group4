@@ -214,9 +214,9 @@ module ProgramCounterLogic_tb;
 
         // ------------------------------------------------------------------
         // T9–T10: Interrupt then RETI
-        //   PC=0x0020, pc2=0x0022 (34)
-        //   On interrupt: PC → 0x0002, epc ← 0x0022
-        //   On RETI:      PC → epc = 0x0022
+        //   PC=0x0020
+        //   On interrupt: PC → 0x0002, epc ← 0x0020 (re-execute on return)
+        //   On RETI:      PC → epc = 0x0020
         // ------------------------------------------------------------------
         $display("--- T9: Interrupt fires ---");
         request_interrupt = 1'b1;
@@ -230,16 +230,16 @@ module ProgramCounterLogic_tb;
         interrupt_reset = 1'b1;
 
         @(posedge clk); #1;
-        check16(pc_current, 16'h0022, test_id);
+        check16(pc_current, 16'h0020, test_id);
         test_id = test_id + 1;
         safe_defaults;
 
         // ------------------------------------------------------------------
         // T11–T12: Interrupt priority over jump
-        //   PC=0x0022, pc2=0x0024 (36)
+        //   PC=0x0020
         //   Both request_interrupt and jump asserted — interrupt must win.
-        //   Expected: PC → 0x0002, epc ← 0x0024 (not the jump target)
-        //   Then RETI restores to 0x0024.
+        //   Expected: PC → 0x0002, epc ← 0x0020 (not the jump target)
+        //   Then RETI restores to 0x0020.
         // ------------------------------------------------------------------
         $display("--- T11: Interrupt priority over jump ---");
         request_interrupt = 1'b1;
@@ -255,17 +255,17 @@ module ProgramCounterLogic_tb;
         interrupt_reset = 1'b1;
 
         @(posedge clk); #1;
-        check16(pc_current, 16'h0024, test_id);
+        check16(pc_current, 16'h0020, test_id);
         test_id = test_id + 1;
         safe_defaults;
 
         // ------------------------------------------------------------------
         // T13: Sequential resumes correctly after RETI
-        //   PC=0x0024 → 0x0026
+        //   PC=0x0020 → 0x0022
         // ------------------------------------------------------------------
         $display("--- T13: Sequential after RETI ---");
         @(posedge clk); #1;
-        check16(pc_current, 16'h0026, test_id);
+        check16(pc_current, 16'h0022, test_id);
         test_id = test_id + 1;
 
         // ------------------------------------------------------------------

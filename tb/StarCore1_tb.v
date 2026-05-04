@@ -32,7 +32,7 @@
 //   interrupt_pin rises  →  ISM start_reg=1  →  request_interrupt=1
 //
 // At clock edge N+1:
-//   PCL: epc <= pc_current+2 ; pc_current <= 0x0002
+//   PCL: epc <= pc_current   ; pc_current <= 0x0002
 //   ISM: start_reg <= 0      ; active_reg <= 1
 //
 // At clock edge N+2 (RETI at 0x0002 executes):
@@ -191,9 +191,9 @@ module StarCore1_tb;
         check1(uut.ISM.active_reg, 1'b1, "active_reg", test_id);
         test_id = test_id + 1;
 
-        // T4: epc must be saved_pc + 2 (the return address)
-        $display("T4: epc = saved_pc + 2:");
-        check16(uut.DU.pcl.epc, saved_pc + 16'd2, test_id);
+        // T4: epc must be saved_pc (interrupt re-executes the interrupted instruction)
+        $display("T4: epc = saved_pc:");
+        check16(uut.DU.pcl.epc, saved_pc, test_id);
         test_id = test_id + 1;
 
         // ------------------------------------------------------------------
@@ -204,9 +204,9 @@ module StarCore1_tb;
 
         @(posedge clk); #1;
 
-        // T5: PC must be restored to the saved return address
+        // T5: PC must be restored to saved_pc (re-executes the interrupted instruction)
         $display("T5: PC restored to epc:");
-        check16(uut.DU.pc_current, saved_pc + 16'd2, test_id);
+        check16(uut.DU.pc_current, saved_pc, test_id);
         test_id = test_id + 1;
 
         // T6: ISM must be back to idle
@@ -259,7 +259,7 @@ module StarCore1_tb;
 
         // T11: PC restored to correct address after second RETI
         $display("T11: PC restored after second RETI:");
-        check16(uut.DU.pc_current, saved_pc + 16'd2, test_id);
+        check16(uut.DU.pc_current, saved_pc, test_id);
         test_id = test_id + 1;
 
         // ------------------------------------------------------------------
