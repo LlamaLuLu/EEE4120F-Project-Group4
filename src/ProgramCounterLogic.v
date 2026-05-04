@@ -56,19 +56,29 @@ module ProgramCounterLogic (
 
     // =========================================================================
     // COMBINATIONAL ADDRESS COMPUTATIONS
-    // All of these are wires — they update instantly whenever pc_current changes.
+    // All computed as wires so they update immediately when pc_current changes.
+    // The clocked always block below selects among these every rising edge.
     // =========================================================================
 
+    // Next sequential address — used as the base for branch/jump targets and
+    // as the return address saved into epc on an interrupt.
     wire [15:0] pc2          = pc_current + 16'd2;
 
-    // Branch target: pc2 + sign-extended offset shifted left by 1 (word-aligns it)
+    // Branch target: pc2 + (ext_im << 1)
+    // ext_im holds a word-count offset from the instruction immediate field.
+    // Shifting left by 1 converts it to a byte offset (each instruction = 2 bytes).
     wire [15:0] pc_branch    = pc2 + {ext_im[14:0], 1'b0};
 
-    // Jump target: replace pc2[12:0] with {instr[11:0], 1'b0}, keep pc2[15:13]
+    // Jump target: {pc2[15:13], instr[11:0], 1'b0}
+    // The 12-bit jump field is shifted left by 1 (byte-align), forming a 13-bit
+    // offset. The upper 3 bits of pc2 are kept so the jump stays within the same
+    // 8 KB segment — matching the MIPS-style J-type encoding used here.
     wire [12:0] jump_target  = {instr_jump_field, 1'b0};
     wire [15:0] pc_jump      = {pc2[15:13], jump_target};
 
-    // Branch condition flags
+    // Branch taken flags — combine the control signal with the ALU condition.
+    // BEQ branches when the ALU subtracted RS1-RS2 and the result was zero (equal).
+    // BNE branches when the result was non-zero (not equal).
     wire beq_taken = beq & zero_flag;
     wire bne_taken = bne & ~zero_flag;
 
@@ -81,22 +91,27 @@ module ProgramCounterLogic (
     end
 
     // =========================================================================
-    // PC UPDATE — synchronous, priority-encoded
+    // PC UPDATE — clocked, priority-encoded
     //
-    // interrupt_reset and request_interrupt are mutually exclusive in practice:
-    //   - interrupt_reset fires only during RETI, which runs only while active_reg=1
-    //   - request_interrupt is blocked while active_reg=1 (ISM guarantees this)
-    // The if-else ordering still encodes a safe priority for completeness.
+    // Evaluated in strict priority order on every rising clock edge.
+    //
+    // Note: interrupt_reset and request_interrupt cannot be simultaneously
+    // asserted in practice — RETI only executes while the ISM active_reg=1,
+    // and request_interrupt is suppressed while active_reg=1. The if-else
+    // ordering still enforces a defined priority as a safety measure.
     // =========================================================================
     always @(posedge clk) begin
+
         if (interrupt_reset)
-            // RETI: restore saved return address, re-enabling normal execution
+            // RETI executing: pop the saved return address back into PC.
             pc_current <= epc;
 
         else if (request_interrupt) begin
-            // Interrupt accepted: save return address, jump to handler at word 1
-            epc        <= pc2;           // pc+2 is where execution resumes after RETI
-            pc_current <= 16'h0002;      // handler is at byte address 2 (word index 1)
+            // Interrupt accepted: snapshot the return address then vector to handler.
+            // epc = pc+2 so that RETI resumes at the instruction that was displaced,
+            // not the one that was executing when the interrupt fired.
+            epc        <= pc2;
+            pc_current <= 16'h0002;   // handler at byte address 2 (word index 1 in InstructionMemory)
         end
 
         else if (jump)
@@ -106,7 +121,9 @@ module ProgramCounterLogic (
             pc_current <= pc_branch;
 
         else
+            // Default: advance to next instruction
             pc_current <= pc2;
+
     end
 
 endmodule
