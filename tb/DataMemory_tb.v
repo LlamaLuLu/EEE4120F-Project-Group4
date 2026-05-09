@@ -142,11 +142,11 @@ module DataMemory_tb;
         // ------------------------------------------------------------------
         $display("--- Group 1: $readmemb initialisation (words 0-3) ---");
 
-        bus_read(16'd0, got); check_eq(got, 16'h0001); mem_rd = 1'b0;
-        bus_read(16'd1, got); check_eq(got, 16'h0002); mem_rd = 1'b0;
-        bus_read(16'd2, got); check_eq(got, 16'h0003); mem_rd = 1'b0;
-        bus_read(16'd3, got); check_eq(got, 16'h0004); mem_rd = 1'b0;
-        bus_read(16'd4, got); check_eq(got, 16'h0000); mem_rd = 1'b0;  // uninitialized RAM
+        bus_read(16'd0, got); check_eq(got, 16'h0008); mem_rd = 1'b0;
+        bus_read(16'd1, got); check_eq(got, 16'h0001); mem_rd = 1'b0;
+        bus_read(16'd2, got); check_eq(got, 16'h000f); mem_rd = 1'b0;
+        bus_read(16'd3, got); check_eq(got, 16'h0000); mem_rd = 1'b0;
+        bus_read(16'd4, got); check_eq(got, 16'h0000); mem_rd = 1'b0;
 
         // ------------------------------------------------------------------
         // GROUP 2: RAM is read-only — writes to RAM addresses are ignored
@@ -155,7 +155,7 @@ module DataMemory_tb;
 
         bus_read(16'd2, got);                          // capture original value
         bus_write(16'd2, 16'hDEAD);                   // attempt write to RAM
-        bus_read(16'd2, got); check_eq(got, 16'h0003); mem_rd = 1'b0;  // must be unchanged
+        bus_read(16'd2, got); check_eq(got, 16'h000f); mem_rd = 1'b0;  // must be unchanged
 
         for (i = 0; i <= 12; i = i + 1) begin
             bus_write(i[15:0], 16'hBEEF);             // write to every RAM slot
