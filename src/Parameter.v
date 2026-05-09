@@ -1,5 +1,5 @@
 // =========================================================================
-// Practical 4: StarCore-1 — Single-Cycle Processor in Verilog
+// Practical 4: StarCore-2 — Single-Cycle Processor in Verilog
 // =========================================================================
 //
 // GROUP NUMBER: 4
@@ -35,21 +35,22 @@
 
 // ---------------------------------------------------------------------------
 // [Alpha] Data memory
-//   DMEM_DEPTH — total word slots including I/O mirror at words 4–7
+//   DMEM_DEPTH     — total word slots (0–12 read-only RAM, 13–15 I/O)
 //   DMEM_ADDR_BITS — address bits needed to index DMEM_DEPTH words
 //   ROW_D — updated from BCE value of 8
 // ---------------------------------------------------------------------------
-`define DMEM_DEPTH      32
-`define DMEM_ADDR_BITS   5          // ceil(log2(32))
+`define DMEM_DEPTH      16
+`define DMEM_ADDR_BITS   4          // ceil(log2(16))
 `define ROW_D            8          // BCE alias — kept for backward compat
 
 // ---------------------------------------------------------------------------
-//   Memory-mapped I/O word addresses
+//   Memory-mapped I/O word addresses (13–15)
+//   13: reserved
+//   14: GPIO_OUT  R/W
+//   15: GPIO_IN   R only
 // ---------------------------------------------------------------------------
-`define INT_FLAG_ADDR   5'd4        // R, write-1-to-clear
-`define INT_EN_ADDR     5'd5        // R/W
-`define GPIO_IN_ADDR    5'd6        // R only
-`define GPIO_OUT_ADDR   5'd7        // R/W                   (GPIO.v)
+`define GPIO_OUT_ADDR   4'd14       // R/W                   (GPIO.v)
+`define GPIO_IN_ADDR    4'd15       // R only
 
 // ---------------------------------------------------------------------------
 //   Interrupt handler vector

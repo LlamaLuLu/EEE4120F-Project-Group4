@@ -1,30 +1,28 @@
 // =========================================================================
-// StarCore-1+ — Data Memory with Memory-Mapped I/O
+// StarCore-2 — Data Memory with Memory-Mapped I/O
 // =========================================================================
 //
 // File        : DataMemory.v
 // Owner       : Pontsho Mbizo, MBZPON001
-// Description : 32-word × 16-bit data RAM with address-decoded memory-mapped
-//               I/O.  Word addresses 4–7 are shadowed by I/O registers; the
-//               RAM array entries at those indices are physically unused.
+// Description : 16-word × 16-bit read-only data RAM with address-decoded
+//               memory-mapped I/O at the top of the address space.
+//               Words 0–12 are pre-loaded RAM (read-only at runtime).
+//               Words 13–15 are I/O registers; the RAM array entries at
+//               those indices are physically unused.
 //
 // Bus interface
 // -------------
-//   addr[4:0] selects one of 32 word slots.  All accesses are 16-bit aligned
-//   (word addressing).  The upper address bits are ignored.
+//   addr[3:0] selects one of 16 word slots.  All accesses are 16-bit aligned
+//   (word addressing).  Upper address bits are ignored.
 //
 // I/O address map  (word address)
 // --------------------------------
-//   4  INT_FLAG  R, write-1-to-clear  (storage in Beta's ISM)
-//   5  INT_EN    R/W                  (storage in Beta's ISM)
-//   6  GPIO_IN   R only; writes silently dropped
-//   7  GPIO_OUT  R/W                  (storage in Alpha's GPIO.v)
-//   All other addresses → RAM
+//   13  reserved  reads return 0; writes silently dropped
+//   14  GPIO_OUT  R/W
+//   15  GPIO_IN   R only; writes silently dropped
+//   All other addresses (0–12) are read-only RAM
 //
-// Write-enable outputs are *combinational* (asserted while mem_wr is high).
-// The RAM write is synchronous (registered on posedge clk).
-// Read output is combinational and gated by mem_rd.
-// =============================================================================
+// =========================================================================
 
 `timescale 1ns / 1ps
 `include "../src/Parameter.v"
@@ -42,20 +40,14 @@ module DataMemory (
 
     // ----- GPIO bus (to/from GPIO.v) -----
     output wire        gpio_out_we,                 // pulse: latch write_data into GPIO_OUT
-    output wire [`WORD_WIDTH-1:0] gpio_out_din,     // = write_data (GPIO gates on gpio_out_we)
+    output wire [`WORD_WIDTH-1:0] gpio_out_din,     // write_data (GPIO gates on gpio_out_we)
     input  wire [`WORD_WIDTH-1:0] gpio_in_data,     // combinational mirror of io_in_pins
-    input  wire [`WORD_WIDTH-1:0] gpio_out_data,    // read-back of GPIO_OUT register
-
-    // ----- Interrupt bus (to/from Beta's InterruptStateMachine) -----
-    output wire        int_en_we,                   // pulse: Beta latches write_data → INT_EN
-    output wire        int_flag_clr,                // pulse: Beta applies write-1-to-clear
-    output wire [`WORD_WIDTH-1:0] int_bus_din,      // = write_data (Beta gates on *_we / *_clr)
-    input  wire [`WORD_WIDTH-1:0] int_en_data,      // current INT_EN value from Beta
-    input  wire [`WORD_WIDTH-1:0] int_flag_data     // current INT_FLAG value from Beta
+    input  wire [`WORD_WIDTH-1:0] gpio_out_data     // read-back of GPIO_OUT register
 );
 
     // -------------------------------------------------------------------------
-    // RAM array — 32 words; words 4–7 are shadowed by I/O and never written.
+    // RAM array — 16 words, pre-loaded; words 13–15 shadowed by I/O.
+    // RAM is read-only at runtime (no write path to ram[]).
     // -------------------------------------------------------------------------
     reg [`WORD_WIDTH-1:0] ram [`DMEM_DEPTH-1:0];
 
@@ -68,39 +60,25 @@ module DataMemory (
     // -------------------------------------------------------------------------
     wire [`DMEM_ADDR_BITS-1:0] word_addr = addr[`DMEM_ADDR_BITS-1:0];
 
-    wire is_int_flag = (word_addr == `INT_FLAG_ADDR);
-    wire is_int_en   = (word_addr == `INT_EN_ADDR);
-    wire is_gpio_in  = (word_addr == `GPIO_IN_ADDR);
-    wire is_gpio_out = (word_addr == `GPIO_OUT_ADDR);
-    wire is_io       = is_int_flag | is_int_en | is_gpio_in | is_gpio_out;
-    wire is_ram      = ~is_io;
+    wire is_gpio_out = (word_addr == `GPIO_OUT_ADDR);   // 14
+    wire is_gpio_in  = (word_addr == `GPIO_IN_ADDR);    // 15
+    wire is_io       = (word_addr >= 4'd13);
 
     // -------------------------------------------------------------------------
     // Write path
-    //   RAM write: synchronous, skips I/O shadow addresses.
-    //   I/O write-enables: combinational, asserted while mem_wr is high.
-    //   gpio_out_din / int_bus_din are just write_data — downstream modules
-    //   gate on their own write-enable.
+    //   RAM is read-only — no write path to ram[].
+    //   Only GPIO_OUT accepts writes; GPIO_IN and reserved addr 13 drop writes.
     // -------------------------------------------------------------------------
-    always @(posedge clk) begin
-        if (mem_wr & is_ram)
-            ram[word_addr] <= write_data;
-    end
-
     assign gpio_out_we  = mem_wr & is_gpio_out;
-    assign int_en_we    = mem_wr & is_int_en;
-    assign int_flag_clr = mem_wr & is_int_flag;
     assign gpio_out_din = write_data;
-    assign int_bus_din  = write_data;
 
     // -------------------------------------------------------------------------
     // Read path — combinational mux, gated by mem_rd.
     // -------------------------------------------------------------------------
     wire [`WORD_WIDTH-1:0] read_mux =
-        is_int_flag ? int_flag_data  :
-        is_int_en   ? int_en_data    :
-        is_gpio_in  ? gpio_in_data   :
-        is_gpio_out ? gpio_out_data  :
+        is_gpio_out ? gpio_out_data            :
+        is_gpio_in  ? gpio_in_data             :
+        is_io       ? {`WORD_WIDTH{1'b0}}      :   // addr 13: reserved
                       ram[word_addr];
 
     assign read_data = mem_rd ? read_mux : {`WORD_WIDTH{1'b0}};

@@ -1,9 +1,9 @@
 // =============================================================================
-// StarCore-1+ — GPIO Testbench
+// StarCore-2 — GPIO Testbench
 // =============================================================================
 //
 // File        : GPIO_tb.v
-// Owner       : Alpha (Pontsho Mbizo, MBZPON001)
+// Owner       : Pontsho Mbizo, MBZPON001
 // Description : Isolated tests for GPIO.v.  DataMemory is not instantiated;
 //               gpio_out_we is driven directly by the testbench.
 //
