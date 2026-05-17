@@ -111,7 +111,7 @@ module ProgramCounterLogic (
             // epc = pc_current so that RETI re-executes the instruction that was
             // interrupted, rather than skipping it.
             epc        <= pc_current;
-            pc_current <= 16'h0002;   // handler at byte address 2 (word index 1 in InstructionMemory)
+            pc_current <= `HANDLER_VEC;
         end
 
         else if (jump)

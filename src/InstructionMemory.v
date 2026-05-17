@@ -33,7 +33,7 @@ module InstructionMemory (
     //       reg [`COL-1:0] memory [`ROW_I-1:0];
     // -------------------------------------------------------------------------
 
-    reg [`COL-1:0] memory [`ROW_I-1:0];
+    reg [`COL-1:0] memory [`IMEM_DEPTH-1:0];
 
     // -------------------------------------------------------------------------
     // TODO: Derive the word address from the byte-addressed PC.
@@ -50,7 +50,7 @@ module InstructionMemory (
     //           PC=0x0004 -> rom_addr=2   ... and so on.
     // -------------------------------------------------------------------------
 
-    wire [3:0] rom_addr = pc[4:1];
+    wire [5:0] rom_addr = pc[6:1];
 
     // -------------------------------------------------------------------------
     // TODO: Load the instruction memory contents from file at simulation start.
@@ -66,7 +66,7 @@ module InstructionMemory (
     // -------------------------------------------------------------------------
 
     initial begin
-        $readmemb("../test/test.prog", memory, 0, 14);
+        $readmemb("../test/test.prog", memory, 0, 35);
     end
 
     // -------------------------------------------------------------------------

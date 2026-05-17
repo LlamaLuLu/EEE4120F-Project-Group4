@@ -32,17 +32,17 @@
 //   interrupt_pin rises  →  ISM start_reg=1  →  request_interrupt=1
 //
 // At clock edge N+1:
-//   PCL: epc <= pc_current   ; pc_current <= 0x0002
+//   PCL: epc <= pc_current   ; pc_current <= HANDLER_VEC (0x0002)
 //   ISM: start_reg <= 0      ; active_reg <= 1
 //
-// At clock edge N+2 (RETI at 0x0002 executes):
+// After N+K cycles (ISR body executes, K ≥ 1; RETI at end of ISR):
 //   PCL: pc_current <= epc
 //   ISM: active_reg <= 0
 //
 // Run from project root:
 //   iverilog -Wall -I src/ -o build/star_sim \
 //       src/Parameter.v src/ALU.v src/GPR.v src/InstructionMemory.v \
-//       src/DataMemory.v src/ALU_Control.v src/ControlUnit.v \
+//       src/DataMemory.v src/GPIO.v src/ALU_Control.v src/ControlUnit.v \
 //       src/ProgramCounterLogic.v src/Datapath.v src/StarCore1.v \
 //       src/InterruptStateMachine.v tb/StarCore1_tb.v
 //   cd test && ../build/star_sim
@@ -81,6 +81,15 @@ module StarCore1_tb;
     initial begin
         $dumpfile("../waves/star.vcd");
         $dumpvars(0, StarCore1_tb);
+        // GPR array elements are not auto-captured by $dumpvars — dump explicitly
+        $dumpvars(0, uut.DU.reg_file.reg_array[0]);
+        $dumpvars(0, uut.DU.reg_file.reg_array[1]);
+        $dumpvars(0, uut.DU.reg_file.reg_array[2]);
+        $dumpvars(0, uut.DU.reg_file.reg_array[3]);
+        $dumpvars(0, uut.DU.reg_file.reg_array[4]);
+        $dumpvars(0, uut.DU.reg_file.reg_array[5]);
+        $dumpvars(0, uut.DU.reg_file.reg_array[6]);
+        $dumpvars(0, uut.DU.reg_file.reg_array[7]);
     end
 
     integer fail_count;
@@ -200,12 +209,13 @@ module StarCore1_tb;
         test_id = test_id + 1;
 
         // ------------------------------------------------------------------
-        // Phase 3: RETI executes (handler at 0x0002 is just RETI).
+        // Phase 3: ISR runs to completion; wait for RETI.
         // ------------------------------------------------------------------
         $display("");
-        $display("--- Phase 3: RETI executes ---");
+        $display("--- Phase 3: ISR runs to RETI ---");
 
-        @(posedge clk); #1;
+        // ISR is multi-cycle — block until ISM active_reg clears (RETI executed).
+        wait(!uut.ISM.active_reg); #1;
 
         // T5: PC must be restored to saved_pc (re-executes the interrupted instruction)
         $display("T5: PC restored to epc:");
@@ -252,8 +262,8 @@ module StarCore1_tb;
         check1(uut.ISM.active_reg, 1'b1, "active_reg", test_id);
         test_id = test_id + 1;
 
-        // Second RETI
-        @(posedge clk); #1;
+        // Wait for second ISR to complete (RETI)
+        wait(!uut.ISM.active_reg); #1;
 
         // T10: ISM clears after second RETI
         $display("T10: ISM idle after second RETI:");

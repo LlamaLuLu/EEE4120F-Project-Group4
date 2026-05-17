@@ -57,7 +57,7 @@
 //   Byte address of ISR entry point in instruction memory.
 //   PC Logic should load this on interrupt acknowledgement.
 // ---------------------------------------------------------------------------
-`define HANDLER_VEC     16'h0008    // word 4 of IMEM (byte address 8)
+`define HANDLER_VEC     16'h0002    // word 1 of IMEM (byte address 2) — ISR entry point
 
 // ---------------------------------------------------------------------------
 // Simulation control
