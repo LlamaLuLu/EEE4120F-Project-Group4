@@ -47,21 +47,21 @@ module InstructionMemory_tb;
         //       expected[1]  = 16'bXXXXXXXXXXXXXXXX;
         //       ... (fill all 15)
 
-        expected[0]  = 16'b1101000000000010;  // JMP to word 2
-        expected[1]  = 16'b1010000000000000;  // RETI
-        expected[2]  = 16'b0000010000000000;  // LD R0, 0(R2)
-        expected[3]  = 16'b0000010001000001;  // LD R1, 1(R2)
-        expected[4]  = 16'b0010000001010000;  // ADD R2, R0, R1
-        expected[5]  = 16'b0001001010000000;  // ST R2, 0(R1)
-        expected[6]  = 16'b0011000001010000;  // SUB R2, R0, R1
-        expected[7]  = 16'b0111000001010000;  // AND R2, R0, R1
-        expected[8]  = 16'b1000000001010000;  // OR R2, R0, R1
-        expected[9]  = 16'b1001000001010000;  // SLT R2, R0, R1
-        expected[10] = 16'b0010000000000000;  // ADD R0, R0, R0
-        expected[11] = 16'b1011000001000001;  // BEQ R0, R1, 1
-        expected[12] = 16'b1100000001000000;  // BNE R0, R1, 0
-        expected[13] = 16'b1101000000000000;  // JMP 0
-        expected[14] = 16'b0000000000000000;  // padding
+        expected[0]  = 16'b1101000000011101;
+        expected[1]  = 16'b0000000100001111;
+        expected[2]  = 16'b0001000000001110;
+        expected[3]  = 16'b0001000101000011;
+        expected[4]  = 16'b0010100000101000;
+        expected[5]  = 16'b0010001000110000;
+        expected[6]  = 16'b0111101001111000;
+        expected[7]  = 16'b1011111000000001;
+        expected[8]  = 16'b0100110000110000;
+        expected[9]  = 16'b0110101001101000;
+        expected[10] = 16'b0111101001111000;
+        expected[11] = 16'b1011111000000001;
+        expected[12] = 16'b0100110000110000;
+        expected[13] = 16'b0110010001010000;
+        expected[14] = 16'b1100010000111010;
 
 
         // TODO: Walk PC through addresses 0, 2, 4, ... 28 (14 instructions).

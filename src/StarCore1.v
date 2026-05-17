@@ -22,8 +22,9 @@
 `include "../src/Parameter.v"
 
 module StarCore1 (
-    input clk,          // System clock — drives both the Datapath and GPR/DataMemory
-    input interrupt_pin // External interrupt request line (rising-edge triggered)
+    input        clk,                    // System clock
+    input  [15:0] io_in_pins,           // Physical input pins (io_in_pins[0] = IRQ source)
+    output [15:0] io_out_pins           // Physical output pins (driven by GPIO_OUT register)
 );
 
     // =========================================================================
@@ -61,6 +62,13 @@ module StarCore1 (
     // Interrupt wires
     wire        request_interrupt; // ISM → Datapath/PCL: interrupt pending for one cycle
     wire        interrupt_reset;   // ControlUnit → ISM + PCL: RETI is executing
+    wire        irq_pin;           // GPIO → ISM: raw interrupt source (io_in_pins[0])
+
+    // GPIO bus wires (between Datapath/DataMemory and GPIO module)
+    wire        gpio_out_we;
+    wire [15:0] gpio_out_din;
+    wire [15:0] gpio_in_data;
+    wire [15:0] gpio_out_data;
 
 
     // =========================================================================
@@ -100,7 +108,11 @@ module StarCore1 (
         .alu_op            (alu_op),
         .opcode            (opcode),
         .request_interrupt (request_interrupt),
-        .interrupt_reset   (interrupt_reset)
+        .interrupt_reset   (interrupt_reset),
+        .gpio_out_we       (gpio_out_we),
+        .gpio_out_din      (gpio_out_din),
+        .gpio_in_data      (gpio_in_data),
+        .gpio_out_data     (gpio_out_data)
     );
 
 
@@ -127,18 +139,19 @@ module StarCore1 (
     //       );
 
     ControlUnit CU (
-        .opcode          (opcode),
-        .alu_op          (alu_op),
-        .jump            (jump),
-        .beq             (beq),
-        .bne             (bne),
-        .mem_read        (mem_read),
-        .mem_write       (mem_write),
-        .alu_src         (alu_src),
-        .reg_dst         (reg_dst),
-        .mem_to_reg      (mem_to_reg),
-        .reg_write       (reg_write),
-        .interrupt_reset (interrupt_reset)
+        .opcode              (opcode),
+        .request_interrupt   (request_interrupt),
+        .alu_op              (alu_op),
+        .jump                (jump),
+        .beq                 (beq),
+        .bne                 (bne),
+        .mem_read            (mem_read),
+        .mem_write           (mem_write),
+        .alu_src             (alu_src),
+        .reg_dst             (reg_dst),
+        .mem_to_reg          (mem_to_reg),
+        .reg_write           (reg_write),
+        .interrupt_reset     (interrupt_reset)
     );
 
 
@@ -148,9 +161,26 @@ module StarCore1 (
 
     InterruptStateMachine ISM (
         .clk               (clk),
-        .interrupt_pin     (interrupt_pin),
+        .interrupt_pin     (irq_pin),
         .interrupt_reset   (interrupt_reset),
+        .interrupt_en      (1'b1),           // always enabled until INT_EN register is implemented
         .request_interrupt (request_interrupt)
+    );
+
+    // =========================================================================
+    // GPIO INSTANTIATION
+    // =========================================================================
+
+    GPIO gpio_inst (
+        .clk          (clk),
+        .rst          (1'b0),
+        .gpio_out_we  (gpio_out_we),
+        .gpio_out_din (gpio_out_din),
+        .io_in_pins   (io_in_pins),
+        .io_out_pins  (io_out_pins),
+        .gpio_in_data (gpio_in_data),
+        .gpio_out_data(gpio_out_data),
+        .irq_pin      (irq_pin)
     );
 
 endmodule

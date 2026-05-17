@@ -55,21 +55,24 @@
 module StarCore1_tb;
 
     // -------------------------------------------------------------------------
-    // Clock and interrupt pin
+    // Clock and GPIO pins
     // -------------------------------------------------------------------------
-    reg clk;
-    reg interrupt_pin;
+    reg  clk;
+    reg  [15:0] io_in_pins;   // io_in_pins[0] is the IRQ source via GPIO
 
-    initial clk          = 1'b0;
-    initial interrupt_pin = 1'b0;
+    initial clk        = 1'b0;
+    initial io_in_pins = 16'd0;
     always #5 clk = ~clk;
 
     // -------------------------------------------------------------------------
     // DUT
     // -------------------------------------------------------------------------
+    wire [15:0] io_out_pins;
+
     StarCore1 uut (
-        .clk          (clk),
-        .interrupt_pin(interrupt_pin)
+        .clk        (clk),
+        .io_in_pins (io_in_pins),
+        .io_out_pins(io_out_pins)
     );
 
     // -------------------------------------------------------------------------
@@ -174,9 +177,9 @@ module StarCore1_tb;
         saved_pc = uut.DU.pc_current;  // PC that will be displaced by interrupt
 
         // Pulse interrupt_pin between clock edges
-        interrupt_pin = 1'b1;
+        io_in_pins[0] = 1'b1;
         #2;
-        interrupt_pin = 1'b0;
+        io_in_pins[0] = 1'b0;
 
         // Next clock edge processes the interrupt
         @(posedge clk); #1;
@@ -233,9 +236,9 @@ module StarCore1_tb;
         @(posedge clk); #1;
         saved_pc = uut.DU.pc_current;
 
-        interrupt_pin = 1'b1;
+        io_in_pins[0] = 1'b1;
         #2;
-        interrupt_pin = 1'b0;
+        io_in_pins[0] = 1'b0;
 
         @(posedge clk); #1;
 
@@ -272,8 +275,8 @@ module StarCore1_tb;
             uut.DU.reg_file.reg_array[1],
             uut.DU.reg_file.reg_array[2]);
         $display("Mem[0]=0x%h  Mem[1]=0x%h  Mem[2]=0x%h  Mem[3]=0x%h",
-            uut.DU.dm.memory[0], uut.DU.dm.memory[1],
-            uut.DU.dm.memory[2], uut.DU.dm.memory[3]);
+            uut.DU.dm.ram[0], uut.DU.dm.ram[1],
+            uut.DU.dm.ram[2], uut.DU.dm.ram[3]);
 
         $display("");
         if (fail_count == 0)

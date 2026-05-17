@@ -58,7 +58,13 @@ module Datapath (
 
     // --- Interrupt signals ---------------------------------------------------
     input        request_interrupt, // From ISM: high for one cycle when interrupt fires
-    input        interrupt_reset    // From ControlUnit: high when RETI executes
+    input        interrupt_reset,   // From ControlUnit: high when RETI executes
+
+    // --- GPIO bus (pass-through to/from GPIO module at StarCore1 level) -----
+    output       gpio_out_we,       // Write-enable pulse to GPIO
+    output [15:0] gpio_out_din,     // Data to write into GPIO_OUT register
+    input  [15:0] gpio_in_data,     // GPIO_IN value (read-back into DataMemory mux)
+    input  [15:0] gpio_out_data     // GPIO_OUT read-back (for ST → LD round-trip)
 );
 
     // =========================================================================
@@ -280,12 +286,18 @@ module Datapath (
     //       );
 
     DataMemory dm (
-        .clk             (clk),
-        .mem_access_addr (alu_result),
-        .mem_write_data  (reg_read_data_2),
-        .mem_write_en    (mem_write),
-        .mem_read        (mem_read),
-        .mem_read_data   (mem_read_data)
+        .clk           (clk),
+        .rst           (1'b0),
+        .addr          (alu_result),
+        .write_data    (reg_read_data_2),
+        .mem_rd        (mem_read),
+        .mem_wr        (mem_write),
+        .read_data     (mem_read_data),
+        // GPIO bus — routed out to GPIO module via Datapath ports
+        .gpio_out_we   (gpio_out_we),
+        .gpio_out_din  (gpio_out_din),
+        .gpio_in_data  (gpio_in_data),
+        .gpio_out_data (gpio_out_data)
     );
 
 
