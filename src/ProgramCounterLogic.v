@@ -49,8 +49,9 @@ module ProgramCounterLogic (
 
     // =========================================================================
     // EXCEPTION PC REGISTER
-    // Saves the return address (pc+2) when an interrupt is accepted.
-    // Restored to pc on RETI. Lives here, not in the GPR.
+    // Saves pc_current when an interrupt is accepted, so that RETI
+    // re-executes the interrupted instruction rather than skipping it.
+    // Restored to pc_current on RETI. Lives here, not in the GPR file.
     // =========================================================================
     reg [15:0] epc;
 

@@ -29,24 +29,10 @@ module StarCore1 (
 
     // =========================================================================
     // INTERNAL CONTROL WIRES
-    // These signals connect the ControlUnit outputs to the Datapath inputs,
-    // and the Datapath opcode output back to the ControlUnit input.
+    // ControlUnit drives these from the decoded opcode; Datapath consumes them.
+    // opcode flows the other way: Datapath fetches the instruction and exposes
+    // the top 4 bits back to ControlUnit for decoding.
     // =========================================================================
-
-    // TODO: Declare all internal control wires here.
-    //
-    //       wire        jump;
-    //       wire        beq;
-    //       wire        bne;
-    //       wire        mem_read;
-    //       wire        mem_write;
-    //       wire        alu_src;
-    //       wire        reg_dst;
-    //       wire        mem_to_reg;
-    //       wire        reg_write;
-    //       wire [1:0]  alu_op;
-    //       wire [3:0]  opcode;
-
     wire        jump;
     wire        beq;
     wire        bne;
@@ -59,12 +45,27 @@ module StarCore1 (
     wire [1:0]  alu_op;
     wire [3:0]  opcode;
 
-    // Interrupt wires
-    wire        request_interrupt; // ISM → Datapath/PCL: interrupt pending for one cycle
-    wire        interrupt_reset;   // ControlUnit → ISM + PCL: RETI is executing
-    wire        irq_pin;           // GPIO → ISM: raw interrupt source (io_in_pins[0])
+    // =========================================================================
+    // INTERRUPT WIRES
+    // request_interrupt: ISM asserts this for exactly one cycle when the IRQ
+    //   fires. Connected to both PCL (to vector the PC) and ControlUnit (to
+    //   suppress all control outputs so no register/memory side-effects occur
+    //   on the cycle the interrupt is accepted).
+    // interrupt_reset: ControlUnit asserts this when opcode 1010 (RETI) is
+    //   fetched. Connected to both PCL (to restore PC from epc) and ISM (to
+    //   clear active_reg so a new interrupt can be accepted).
+    // irq_pin: raw IRQ source extracted from io_in_pins[0] by the GPIO module.
+    // =========================================================================
+    wire        request_interrupt;
+    wire        interrupt_reset;
+    wire        irq_pin;
 
-    // GPIO bus wires (between Datapath/DataMemory and GPIO module)
+    // =========================================================================
+    // GPIO BUS WIRES
+    // DataMemory decodes ST/LD to addresses 14-15 and drives these signals.
+    // GPIO is instantiated here (not inside Datapath) so it sits at the same
+    // level as ISM and ControlUnit — a clean peer rather than a buried sub-module.
+    // =========================================================================
     wire        gpio_out_we;
     wire [15:0] gpio_out_din;
     wire [15:0] gpio_in_data;
@@ -73,27 +74,10 @@ module StarCore1 (
 
     // =========================================================================
     // DATAPATH INSTANTIATION
+    // Receives all control signals from CU; exposes opcode back to CU.
+    // GPIO bus ports are pass-throughs: DataMemory drives them internally
+    // and they are routed up here to connect to the GPIO module.
     // =========================================================================
-
-    // TODO: Instantiate the Datapath module using named port connections.
-    //       All control inputs come from the ControlUnit wires declared above.
-    //       The opcode output goes to the ControlUnit input.
-    //
-    //       Datapath DU (
-    //           .clk        (clk),
-    //           .jump       (jump),
-    //           .beq        (beq),
-    //           .bne        (bne),
-    //           .mem_read   (mem_read),
-    //           .mem_write  (mem_write),
-    //           .alu_src    (alu_src),
-    //           .reg_dst    (reg_dst),
-    //           .mem_to_reg (mem_to_reg),
-    //           .reg_write  (reg_write),
-    //           .alu_op     (alu_op),
-    //           .opcode     (opcode)
-    //       );
-
     Datapath DU (
         .clk               (clk),
         .jump              (jump),
@@ -118,26 +102,10 @@ module StarCore1 (
 
     // =========================================================================
     // CONTROL UNIT INSTANTIATION
+    // Decodes opcode each cycle and drives all Datapath control signals.
+    // request_interrupt gates every output to safe defaults for the one cycle
+    // the interrupt is being accepted, preventing spurious register/memory writes.
     // =========================================================================
-
-    // TODO: Instantiate the ControlUnit module.
-    //       Its single input is the opcode from the Datapath.
-    //       Its outputs drive all the Datapath control inputs.
-    //
-    //       ControlUnit CU (
-    //           .opcode     (opcode),
-    //           .alu_op     (alu_op),
-    //           .jump       (jump),
-    //           .beq        (beq),
-    //           .bne        (bne),
-    //           .mem_read   (mem_read),
-    //           .mem_write  (mem_write),
-    //           .alu_src    (alu_src),
-    //           .reg_dst    (reg_dst),
-    //           .mem_to_reg (mem_to_reg),
-    //           .reg_write  (reg_write)
-    //       );
-
     ControlUnit CU (
         .opcode              (opcode),
         .request_interrupt   (request_interrupt),
